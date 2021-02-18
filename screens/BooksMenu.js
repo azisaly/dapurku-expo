@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, ScrollView, KeyboardAvoidingView, Button, Image, ImageBackground } from 'react-native'
+import { StyleSheet, Text, View, TextInput, ScrollView, ActivityIndicator, TouchableOpacity, KeyboardAvoidingView, Button, Image, ImageBackground } from 'react-native'
 import { AntDesign } from '@expo/vector-icons';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import ItemsResep from '../components/ItemsResep';
-import { LogoImage } from '../assets/index'
+import { LogoImage } from '../assets/index';
+import * as tf from '@tensorflow/tfjs';
+import * as mobilenet from '@tensorflow-models/mobilenet';
+import { decodeJpeg, fetch } from '@tensorflow/tfjs-react-native';
+import Constants from 'expo-constants';
+import * as Permissions from 'expo-permissions';
+import * as FileSystem from 'expo-file-system';
+
 
 
 
@@ -15,12 +22,85 @@ const BooksMenu = (props, { initialProps }) => {
     const [search, setSearch] = useState("");
     const [filterResep, setFilterResep] = useState([]);
     const [shouldShow, setShouldShow] = useState(true);
-    const [fokus, setFokus] = useState(false)
+    const [fokus, setFokus] = useState(false);
+
+    const [isTfReady, setIsTfReady] = useState(false);
+    const [isModelReady, setIsModelReady] = useState(false);
+    const [predictions, setPredictions] = useState(null);
     const [image, setImage] = useState(null);
+
+    const jalanKanModelTf = async () => {
+        await tf.ready();
+        setIsTfReady(true);
+        model = await mobilenet.load();
+        setIsModelReady(true);
+        getPermissionAsync();
+    };
+    const getPermissionAsync = async () => {
+        if (Constants.platform.android) {
+            const { status } = await Permissions.askAsync(Permissions.CAMERA_ROLL);
+            if (status !== 'granted') {
+                alert('Sorry');
+            };
+        };
+    };
+
+    const classifyImage = async () => {
+        try {
+            const fileUri = image
+            const imgB64 = await FileSystem.readAsStringAsync(fileUri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            const imgBuffer = tf.util.encodeString(imgB64, 'base64').buffer;
+            const raw = new Uint8Array(imgBuffer)
+            const imageTensor = decodeJpeg(raw);
+            const predictions = await model.classify(imageTensor);
+            setPredictions(predictions);
+            const data = predictions[0].className
+            setSearch(data)
+            console.log(predictions);
+
+
+
+        } catch (error) {
+            console.log(error);
+        };
+    };
+
+    const selectImage = async () => {
+        try {
+            let response = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsEditing: true,
+                aspect: [4, 3]
+            });
+
+            if (!response.cancelled) {
+                const source = response.uri
+                setImage(source);
+                classifyImage();
+            }
+        } catch (error) {
+            console.log(error);
+        };
+    };
+
+    const renderPrediction = prediction => {
+        return (
+            <Text key={prediction.className} style={styles.text}>
+                {prediction.className}
+            </Text>
+        );
+    };
+    useEffect(() => {
+        jalanKanModelTf();
+    }, []);
+
+    //  ===================================================== End Tensorflow =============================================================================
 
     useEffect(() => {
         setLoading(true);
-        axios.get("http://my-json-server.typicode.com/azisaly/dummydatadapurku/resep")
+        axios.get("http://my-json-server.typicode.com/azisaly/dummydatadapurku/resep", { maxContentLength: 2000 })
             .then(response => {
                 setResep(response.data)
                 setLoading(false)
@@ -71,7 +151,7 @@ const BooksMenu = (props, { initialProps }) => {
             <View style={styles.header}>
                 <View style={styles.search}>
                     <AntDesign name="search1" size={24} color="black" />
-                    <TextInput placeholder="Cari Menu Kesukaanmu" onChangeText={(text) => {
+                    <TextInput placeholder="Search" onChangeText={(text) => {
                         setSearch(text)
                     }} />
                 </View>
@@ -79,15 +159,31 @@ const BooksMenu = (props, { initialProps }) => {
 
 
 
+            <TouchableOpacity style={styles.imageWrapper} onPress={isModelReady ? selectImage : undefined}>
+                <ImageBackground
+                    source={LogoImage}
+                    style={{
+                        height: 200,
+                        width: 200,
+                        opacity: 0.20,
+                        position: 'absolute',
+                    }}
+                />
+                {image && <Image source={{ uri: image }} style={styles.imageContainer} />}
+                {isModelReady && !image && (
+                    <Text style={styles.transparentText}>
+                        explore by picture</Text>
+                )}
+            </TouchableOpacity>
 
-            <Button title="Jelajahi Dengan Gambar" style={{ display: 'flex' }} onPress={pickImage} />
-
-            <View style={styles.containerImage}>
-                <ImageBackground source={LogoImage} style={styles.camera}>
-                    {image && <Image source={{ uri: image }} style={{ width: 200, height: 200, display: 'flex' }} />}
-                </ImageBackground>
+            <View style={styles.predictionWrapper}>
+                {/* {isModelReady && image && (
+                    <Text style={styles.text}>Predictionss : { predictions ? '' : 'Predicting'}</Text>
+                )} */}
+                {isModelReady && predictions && predictions.map((p, index) => {
+                    console.log(`${p}, ${index}`)
+                })}
             </View>
-
 
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 2 }}>
@@ -163,7 +259,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
 
     },
+    imageWrapper: {
+        height: 250,
+        borderColor: '#cf667f',
+        display: 'flex',
+        marginBottom: 10,
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
 
+
+    },
+    imageContainer: {
+        width: 250,
+        height: 250,
+    },
 
     containerImage: {
         display: 'flex',
@@ -172,6 +282,10 @@ const styles = StyleSheet.create({
         height: 200,
         marginBottom: 10
 
+    },
+    transparentText: {
+        color: '#0A011C',
+        fontWeight: 'bold'
     },
     camera: {
         width: 200,
