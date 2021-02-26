@@ -15,7 +15,7 @@ const Details = (props) => {
     const state = props.route.params?.state ?? null;
     const details = state.find((cat) => cat.id === resepid);
     const [dataFlatlist, setDataFlatlist] = useState(details.desc);
-    const [dataBahan,setDataBahan] = useState(details.bahan);
+    const [dataBahan, setDataBahan] = useState(details.bahan);
 
     const jumpToAction = TabActions.jumpTo('Store');
 
@@ -43,7 +43,7 @@ const Details = (props) => {
                     <View style={styles.container} key={details.id}>
                         <Image style={styles.image} source={{ uri: details.image }} />
                         <Text style={styles.title}>{details.title}</Text>
-                        
+
 
 
                         <Text style={styles.descTitle}>Cara Memasak :</Text>
@@ -61,13 +61,13 @@ const Details = (props) => {
                             showsVerticalScrollIndicator={false}
                         />
                         <TouchableOpacity
-                     style={styles.button}
-                     onPress={()=>props.navigation.navigate('Store')}   
+                            style={styles.button}
+                            onPress={() => props.navigation.navigate('Store')}
                         >
-                        <Text style={styles.titleBtn}>BELI BAHAN</Text>
-                    </TouchableOpacity>
+                            <Text style={styles.titleBtn}>Beli Bahan</Text>
+                        </TouchableOpacity>
                     </View>
-                     
+
                 </SafeAreaView>
             </ScrollView>
         )
@@ -93,27 +93,29 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Bold',
         fontSize: 25,
     },
-    calory:{
-        height:20,
-        backgroundColor:'red'
+    calory: {
+        height: 20,
+        backgroundColor: 'red'
     },
     descTitle: {
-        marginTop:10,
+        marginTop: 10,
         fontFamily: 'Poppins-Bold',
     },
     desc: {
         fontFamily: 'Poppins-Regular'
     },
-    button:{
-        marginTop:10,
-        height:50,
-        backgroundColor:'#DBF405',
-        justifyContent:'center',
-    alignItems:'center',
-    display:'flex',
-    borderRadius:10
+    button: {
+        marginTop: 10,
+        height: 50,
+        backgroundColor: '#FFFF00',
+        justifyContent: 'center',
+        alignItems: 'center',
+        display: 'flex',
+        borderRadius: 10
     },
-    titleBtn:{
-    fontFamily: 'Poppins-Bold',
+    titleBtn: {
+        fontFamily: 'Poppins-Bold',
+        fontSize: 20,
+        letterSpacing: 0.5
     }
 })
